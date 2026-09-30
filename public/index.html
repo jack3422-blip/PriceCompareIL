@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>השוואת מחירים</title>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--text:#1d2330;--muted:#6b7385;--accent:#2563eb;--good:#16a34a;--ali:#e62e04;--line:#e5e7ec}
+  @media (prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b2030;--text:#e8ebf2;--muted:#9aa3b8;--line:#2a3147}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  header{padding:20px 16px 8px;max-width:900px;margin:auto}
+  h1{margin:0 0 4px;font-size:22px} .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+  form{display:flex;gap:8px}
+  input{flex:1;padding:14px;font-size:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
+  button{padding:0 20px;font-size:16px;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
+  main{max-width:900px;margin:auto;padding:8px 16px 40px}
+  .banner{background:#fff7e0;color:#7a5b00;border-radius:10px;padding:10px 12px;font-size:13px;margin:10px 0}
+  .sort{display:flex;gap:8px;margin:12px 0;font-size:14px;align-items:center;flex-wrap:wrap}
+  .sort button{background:var(--card);color:var(--text);border:1px solid var(--line);padding:8px 12px;border-radius:999px;font-size:14px}
+  .sort button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .card img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff}
+  .body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .store{font-size:13px;color:var(--muted);font-weight:600}
+  .title{font-size:14px;line-height:1.4}
+  .price{font-size:20px;font-weight:700}
+  .ship{font-size:13px;color:var(--muted)} .total{font-size:13px;font-weight:600}
+  .best{outline:2px solid var(--good)} .tag{background:var(--good);color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;align-self:flex-start}
+  a.btn{margin-top:auto;text-align:center;text-decoration:none;background:var(--accent);color:#fff;padding:10px;border-radius:10px;font-size:14px}
+  .ali h2{color:var(--ali)} .ali a.btn{background:var(--ali)}
+  h2{font-size:17px;margin:24px 0 8px}
+  .msg{padding:24px;text-align:center;color:var(--muted)}
+  .savings{background:#e8f7ee;color:#116b35;border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>השוואת מחירים בחנויות בישראל</h1>
+  <p class="sub">כתוב מוצר, ונראה לך את 10 החנויות המובילות + השוואה לעליאקספרס</p>
+  <form id="f"><input id="q" placeholder="למשל: מנורה לתקרה" autocomplete="off"><button>חיפוש</button></form>
+</header>
+<main id="out"></main>
+<script>
+const out=document.getElementById('out');let data=null,sortBy='price';
+const money=n=>n==null?'—':'₪'+Number(n).toLocaleString('he-IL');
+function card(i,best){
+  return `<div class="card ${best?'best':''}"><img src="${i.image||''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+  <div class="body">${best?'<span class="tag">הכי משתלם</span>':''}<div class="store">${esc(i.store)}</div><div class="title">${esc(i.title)}</div>
+  <div class="price">${i.priceText||money(i.price)}</div><div class="ship">${esc(i.shipping||'')}</div>
+  ${i.total!=null?`<div class="total">סה"כ כולל משלוח: ${money(i.total)}</div>`:''}
+  <a class="btn" href="${i.link||'#'}" target="_blank" rel="noopener">לחנות</a></div></div>`;
+}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){
+  if(!data)return;
+  const items=[...data.items].sort((a,b)=>{const k=sortBy==='total'?'total':'price';return (a[k]??1e12)-(b[k]??1e12)});
+  let h='';
+  if(data.mode==='demo')h+='<div class="banner">מצב הדגמה: הנתונים כאן לדוגמה בלבד. כדי לראות תוצאות אמיתיות צריך להוסיף מפתח SERPAPI_KEY בשרת.</div>';
+  if(!items.length){out.innerHTML=h+'<div class="msg">לא נמצאו תוצאות</div>';return}
+  h+=`<div class="sort">מיון: <button data-s="price" class="${sortBy==='price'?'on':''}">מחיר מוצר</button><button data-s="total" class="${sortBy==='total'?'on':''}">מחיר כולל משלוח</button></div>`;
+  h+='<div class="grid">'+items.map((i,idx)=>card(i,idx===0)).join('')+'</div>';
+  const ali=data.ali||{items:[]};
+  h+='<div class="ali"><h2>השוואה: עליאקספרס</h2>';
+  if(ali.items.length){
+    h+='<div class="grid">'+ali.items.map(i=>card(i,false)).join('')+'</div>';
+    const cheapestIl=items[0]?.price, a=ali.items[0]?.price;
+    if(cheapestIl&&a&&a<cheapestIl)h+=`<div class="savings">בעליאקספרס זול ב-${money(cheapestIl-a)} מהחנות הישראלית הזולה (שים לב לזמן משלוח ולאחריות)</div>`;
+  } else h+='<div class="msg">לא נמצאו תוצאות ישירות</div>';
+  h+=`<p><a href="${ali.searchLink}" target="_blank" rel="noopener">חיפוש ידני בעליאקספרס</a></p></div>`;
+  out.innerHTML=h;
+  out.querySelectorAll('.sort button').forEach(b=>b.onclick=()=>{sortBy=b.dataset.s;render()});
+}
+document.getElementById('f').onsubmit=async e=>{
+  e.preventDefault();const q=document.getElementById('q').value.trim();if(!q)return;
+  out.innerHTML='<div class="msg">מחפש...</div>';
+  try{const r=await fetch('/api/search?q='+encodeURIComponent(q));data=await r.json();
+    if(data.error){out.innerHTML='<div class="msg">'+esc(data.error)+'</div>';return}render()}
+  catch{out.innerHTML='<div class="msg">שגיאת רשת</div>'}
+};
+</script>
+</body>
+</html>
