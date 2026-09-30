@@ -33,6 +33,11 @@
   h2{font-size:17px;margin:24px 0 8px}
   .msg{padding:24px;text-align:center;color:var(--muted)}
   .savings{background:#e8f7ee;color:#116b35;border-radius:10px;padding:10px 12px;font-size:14px;margin:10px 0}
+  .verdict{background:linear-gradient(135deg,#16a34a,#0f7a36);color:#fff;border-radius:16px;padding:16px;margin:14px 0;display:flex;gap:14px;align-items:center}
+  .verdict img{width:96px;height:96px;object-fit:contain;background:#fff;border-radius:12px;flex:none}
+  .verdict .vt{font-size:13px;opacity:.9} .verdict .vp{font-size:28px;font-weight:800;margin:2px 0}
+  .verdict .vn{font-size:14px;line-height:1.4} .verdict .vs{font-size:13px;margin-top:6px;opacity:.95}
+  .verdict a{display:inline-block;margin-top:10px;background:#fff;color:#0f7a36;text-decoration:none;padding:8px 14px;border-radius:10px;font-weight:700;font-size:14px}
 </style>
 </head>
 <body>
@@ -53,12 +58,37 @@ function card(i,best){
   <a class="btn" href="${i.link||'#'}" target="_blank" rel="noopener">לחנות</a></div></div>`;
 }
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function median(a){const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length?(b.length%2?b[m]:(b[m-1]+b[m])/2):null}
+function verdict(items,ali){
+  const withTotal=items.filter(i=>i.total!=null);
+  if(!withTotal.length)return '';
+  const med=median(withTotal.map(i=>i.price));
+  // מסננים מחירים חשודים נמוכים מדי (בדרך כלל אביזר או חלק, לא המוצר עצמו)
+  const real=withTotal.filter(i=>i.price>=med*0.4);
+  const pool=real.length?real:withTotal;
+  const best=[...pool].sort((a,b)=>a.total-b.total)[0];
+  const save=Math.round(med-best.price);
+  let extra='';
+  const a=ali&&ali.items&&ali.items[0];
+  if(a&&a.price!=null){
+    extra=a.price<best.total
+      ?`<div class="vs">בעליאקספרס יש דגם דומה ב-${money(a.price)}, אבל המשלוח איטי והאחריות מוגבלת.</div>`
+      :`<div class="vs">זול יותר מעליאקספרס (${money(a.price)}) וגם מגיע מהר עם אחריות מקומית.</div>`;
+  }
+  return `<div class="verdict"><img src="${best.image||''}" alt="" onerror="this.style.visibility='hidden'">
+  <div><div class="vt">המבצע הכי טוב עכשיו</div><div class="vp">${money(best.total)}</div>
+  <div class="vn">${esc(best.title)}<br>ב-${esc(best.store)} (${esc(best.shipping||'')})</div>
+  <div class="vs">${save>0?`זול ב-${money(save)} ממחיר החציון של ${withTotal.length} החנויות שנבדקו.`:'המחיר הזול ביותר מבין החנויות שנבדקו.'}</div>${extra}
+  <a href="${best.link||'#'}" target="_blank" rel="noopener">לעבור לחנות</a></div></div>`;
+}
 function render(){
   if(!data)return;
   const items=[...data.items].sort((a,b)=>{const k=sortBy==='total'?'total':'price';return (a[k]??1e12)-(b[k]??1e12)});
+  const bestKey=sortBy==='total'?'total':'price';
   let h='';
   if(data.mode==='demo')h+='<div class="banner">מצב הדגמה: הנתונים כאן לדוגמה בלבד. כדי לראות תוצאות אמיתיות צריך להוסיף מפתח SERPAPI_KEY בשרת.</div>';
   if(!items.length){out.innerHTML=h+'<div class="msg">לא נמצאו תוצאות</div>';return}
+  h+=verdict(data.items,data.ali);
   h+=`<div class="sort">מיון: <button data-s="price" class="${sortBy==='price'?'on':''}">מחיר מוצר</button><button data-s="total" class="${sortBy==='total'?'on':''}">מחיר כולל משלוח</button></div>`;
   h+='<div class="grid">'+items.map((i,idx)=>card(i,idx===0)).join('')+'</div>';
   const ali=data.ali||{items:[]};
